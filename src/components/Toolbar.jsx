@@ -1,40 +1,79 @@
-import { Textbox } from "fabric"
+import { Image as FabricImage } from "fabric"
 
 export default function Toolbar({ canvas }) {
-  const addText = () => {
-    const text = new Textbox("Nail Style", {
-      left: 80,
-      top: 200,
-      fontSize: 28,
-      fill: "#be185d",
-    })
-    canvas.add(text)
+
+  // 🗑 ปุ่มลบ
+  const handleDelete = () => {
+    const active = canvas.getActiveObjects()
+    if (!active || active.length === 0) return
+
+    active.forEach(obj => canvas.remove(obj))
+    canvas.discardActiveObject()
+    canvas.renderAll()
   }
-    const removeObject = () => {
-    const obj = canvas.getActiveObject()
-    if (obj) {
-        canvas.remove(obj)
+
+  // 🖼 import รูป
+  const handleImport = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("ไฟล์ใหญ่เกิน 5MB")
+      return
     }
+
+    const reader = new FileReader()
+
+    reader.onload = async () => {
+      const img = await FabricImage.fromURL(reader.result)
+
+      const maxW = canvas.getWidth() * 0.7
+      const maxH = canvas.getHeight() * 0.7
+
+      const scale = Math.min(
+        maxW / img.width,
+        maxH / img.height
+      )
+
+      img.set({
+        left: canvas.getWidth() / 2,
+        top: canvas.getHeight() / 2,
+        originX: "center",
+        originY: "center",
+        scaleX: scale,
+        scaleY: scale
+      })
+
+      canvas.add(img)
+      canvas.setActiveObject(img)
+      canvas.centerObject(img)
+      canvas.bringObjectToFront(img)
+      canvas.renderAll()
     }
+
+    reader.readAsDataURL(file)
+  }
+
   return (
-    <div>
+    <div className="flex gap-2 p-2 border-b bg-white">
+
+      <label className="bg-pink-500 text-white px-3 py-1 rounded cursor-pointer">
+        Import Image
         <input
-        type="color"
-        onChange={(e) => {
-            const obj = canvas.getActiveObject()
-            if (obj) {
-            obj.set("fill", e.target.value)
-            canvas.renderAll()
-            }
-        }}
-        className="h-8 w-8 cursor-pointer"
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={handleImport}
         />
-        <button
-        onClick={addText}
-        className="px-3 py-1 rounded-md bg-pink-500 text-white text-sm hover:bg-pink-600">
-        Add Text
-        </button>
-            <button onClick={removeObject} className="btn px-3 py-1 rounded-md bg-pink-500 text-white text-sm hover:bg-pink-600"> Delete </button>
+      </label>
+
+      <button
+        onClick={handleDelete}
+        className="bg-red-500 text-white px-3 py-1 rounded"
+      >
+        Delete
+      </button>
+
     </div>
   )
 }
