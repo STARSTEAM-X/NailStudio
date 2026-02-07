@@ -2,6 +2,8 @@ import { useEffect, useState } from "react"
 
 export default function LayerPanel({ canvas }) {
   const [layers, setLayers] = useState([])
+  const [editingObj, setEditingObj] = useState(null)
+  const [tempName, setTempName] = useState("")
 
   const isNailBase = (o) => {
     return (
@@ -15,8 +17,6 @@ export default function LayerPanel({ canvas }) {
     if (!canvas) return
 
     const objs = canvas.getObjects()
-
-    // ⭐ ตัด nail base ออกตัวเดียว
     const userObjs = objs.filter(o => !isNailBase(o))
 
     userObjs.forEach((o, i) => {
@@ -32,12 +32,10 @@ export default function LayerPanel({ canvas }) {
 
     refresh()
 
-    // fabric v6 — ใช้ 3 event นี้พอ
     canvas.on("object:added", refresh)
     canvas.on("object:removed", refresh)
     canvas.on("object:modified", refresh)
 
-    // fallback sync (กัน async image load)
     const t = setTimeout(refresh, 300)
 
     return () => {
@@ -78,6 +76,20 @@ export default function LayerPanel({ canvas }) {
     refresh()
   }
 
+  // ✏️ rename
+  const startRename = (o) => {
+    setEditingObj(o)
+    setTempName(o.data?.name || "")
+  }
+
+  const commitRename = (o) => {
+    if (!o.data) o.data = {}
+    o.data.name = tempName || "Layer"
+    setEditingObj(null)
+    canvas.renderAll()
+    refresh()
+  }
+
   return (
     <div className="w-56 border-l p-2 bg-white overflow-y-auto">
       <h3 className="font-bold mb-2">Layers</h3>
@@ -91,7 +103,26 @@ export default function LayerPanel({ canvas }) {
       {layers.map((o, i) => (
         <div key={i} className="border p-2 mb-2 rounded text-xs bg-gray-50">
 
-          <div className="font-medium">{o.data?.name}</div>
+          {/* 📝 rename UI */}
+          {editingObj === o ? (
+            <input
+              autoFocus
+              value={tempName}
+              onChange={e => setTempName(e.target.value)}
+              onBlur={() => commitRename(o)}
+              onKeyDown={e => {
+                if (e.key === "Enter") commitRename(o)
+              }}
+              className="border px-1 w-full mb-1"
+            />
+          ) : (
+            <div
+              onDoubleClick={() => startRename(o)}
+              className="font-medium cursor-text"
+            >
+              {o.data?.name}
+            </div>
+          )}
 
           <div className="flex gap-1 flex-wrap mt-1">
             <button
